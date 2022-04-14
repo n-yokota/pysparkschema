@@ -2,3 +2,6 @@ __pycache__
 .python-version
 pysparkschema.egg-info
 .eggs
+.DS_Store
+build
+dist
