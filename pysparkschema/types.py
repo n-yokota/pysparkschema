@@ -3,6 +3,8 @@ from .resolver import (
     TypeResolver,
     NullTypeResolveStrategy,
     NumberTypeResolveStrategy,
+    is_array,
+    is_struct,
 )
 from .error import TypeMergeError
 
@@ -16,19 +18,18 @@ default_resolver = TypeResolver(
 
 
 def merge_array_schemas(a1, a2, resolver: TypeResolver = default_resolver):
-    a1_elem_typename = a1.elementType.typeName()
-    a2_elem_typename = a2.elementType.typeName()
+    e_type1 = a1.elementType
+    e_type2 = a2.elementType
 
-    if a1_elem_typename == a2_elem_typename:
-        if a1_elem_typename == "struct":
-            return ArrayType(merge_schemas(a1.elementType, a2.elementType))
-        elif a1_elem_typename == "array":
-            return ArrayType(merge_array_schemas(a1.elementType, a2.elementType))
+    if e_type1.typeName() == e_type2.typeName():
+        if is_struct(e_type1):
+            return ArrayType(merge_schemas(e_type1, e_type2, resolver))
+        elif is_array(e_type1):
+            return ArrayType(merge_array_schemas(e_type1, e_type2, resolver))
         else:
-            return ArrayType(a1.elementType)
+            return ArrayType(e_type1)
     else:
-        new_type = resolver.resolve(a1.elementType, a2.elementType)
-        return ArrayType(new_type)
+        return ArrayType(resolver.resolve(e_type1, e_type2))
 
 
 def merge_schemas(s1, s2, resolver: TypeResolver = default_resolver):
@@ -48,27 +49,20 @@ def merge_schemas(s1, s2, resolver: TypeResolver = default_resolver):
     errors = []
     new_fields = {}
     for key in s1_keys & s2_keys:
-        s1_type = s1[key].dataType.typeName()
-        s2_type = s2[key].dataType.typeName()
-        if s1_type == s2_type:
-            if s1_type == "struct":
-                new_fields[key] = merge_schemas(
-                    s1[key].dataType, s2[key].dataType, resolver
-                )
-            elif s1_type == "array":
-                try:
-                    new_fields[key] = merge_array_schemas(
-                        s1[key].dataType, s2[key].dataType, resolver
-                    )
-                except TypeMergeError as e:
-                    errors.append(str(e))
+        s1_type = s1[key].dataType
+        s2_type = s2[key].dataType
+        try:
+            if s1_type.typeName() == s2_type.typeName():
+                if is_struct(s1_type):
+                    new_fields[key] = merge_schemas(s1_type, s2_type, resolver)
+                elif is_array(s1_type):
+                    new_fields[key] = merge_array_schemas(s1_type, s2_type, resolver)
+                else:
+                    new_fields[key] = s1_type
             else:
-                new_fields[key] = s1[key].dataType
-        else:
-            try:
-                new_fields[key] = resolver.resolve(s1[key].dataType, s2[key].dataType)
-            except TypeMergeError as e:
-                errors.append(str(e))
+                new_fields[key] = resolver.resolve(s1_type, s2_type)
+        except TypeMergeError as e:
+            errors.append(str(e))
 
     for key in s1_keys - s2_keys:
         new_fields[key] = s1[key].dataType

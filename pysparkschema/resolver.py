@@ -37,7 +37,15 @@ def is_number(t):
 
 
 def is_string(t):
-    return t.typeName() in ["string"]
+    return t.typeName()  == "string"
+
+
+def is_array(t):
+    return t.typeName() == "array"
+
+
+def is_struct(t):
+    return t.typeName() == "struct"
 
 
 class NullTypeResolveStrategy(TypeResolveStrategy):
