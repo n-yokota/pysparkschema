@@ -6,8 +6,8 @@ from pyspark.sql.types import (
     NullType,
     ArrayType,
 )
-from pytest import fixture
-from pysparkschema.types import merge_schemas
+from pytest import fixture, raises
+from pysparkschema.types import merge_schemas, TypeMergeError
 
 
 def test_merge_schemas():
@@ -152,3 +152,20 @@ def test_merge_schemas():
 
     merge_result = merge_schemas(schema, schema2)
     assert merge_result
+
+
+def test_error_merge_schemas():
+    schema = StructType(
+        [
+            StructField("test1", StringType(), True),
+        ]
+    )
+    schema2 = StructType(
+        [
+            StructField("test1", ArrayType(StringType()), True),
+        ]
+    )
+    with raises(TypeMergeError):
+        merge_schemas(schema, schema2)
+
+

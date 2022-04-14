@@ -1,6 +1,9 @@
 from pyspark.sql.types import StructType, StructField, ArrayType
 
 
+class TypeMergeError(RuntimeError):
+    pass
+
 def is_null(t):
     return t.typeName() in ["null", "void"]
 
@@ -20,9 +23,8 @@ def merge_array_schemas(a1, a2):
         return ArrayType(a2.elementType)
     elif not is_null(a1.elementType) and is_null(a2.elementType):
         return ArrayType(a1.elementType)
-    print(a1_elem_typename, a2_elem_typename)
 
-    raise Exception(f"Schema {a1.elementType} and {a2.elementType} cannot be merged")
+    raise TypeMergeError(f"Schema {a1.elementType} and {a2.elementType} cannot be merged")
 
 
 def merge_schemas(s1, s2):
@@ -51,13 +53,13 @@ def merge_schemas(s1, s2):
                     new_fields[key] = merge_array_schemas(
                         s1[key].dataType, s2[key].dataType
                     )
-                except Exception as e:
+                except TypeMergeError as e:
                     errors.append(str(e))
             else:
                 new_fields[key] = s1[key].dataType
-        elif is_null(s1[key].dataType) or not is_null(s2[key].dataType):
+        elif is_null(s1[key].dataType) and not is_null(s2[key].dataType):
             new_fields[key] = s2[key].dataType
-        elif not is_null(s1[key].dataType) or is_null(s2[key].dataType):
+        elif not is_null(s1[key].dataType) and is_null(s2[key].dataType):
             new_fields[key] = s1[key].dataType
         else:
             errors.append(f"Failed to merge schema {s1_type} != {s2_type}")
@@ -68,6 +70,6 @@ def merge_schemas(s1, s2):
         new_fields[key] = s2[key].dataType
 
     if errors:
-        raise Exception("\n".join(errors))
+        raise TypeMergeError("\n".join(errors))
     return StructType([StructField(key, new_fields[key], True) for key in final_order])
 
