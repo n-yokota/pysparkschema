@@ -27,8 +27,9 @@ def merge_array_schemas(a1, a2):
 
 def merge_schemas(s1, s2):
     """
-    スキーマをマージする
-    列の順番は、s1を優先し、s2のものをs2の順番で後付けする
+    Merge DataFrame schemas
+
+    - merged schema will be nullable
     """
 
     s1_key_list = [f.name for f in s1]
@@ -69,3 +70,4 @@ def merge_schemas(s1, s2):
     if errors:
         raise Exception("\n".join(errors))
     return StructType([StructField(key, new_fields[key], True) for key in final_order])
+
