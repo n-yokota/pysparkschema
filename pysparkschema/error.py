@@ -1,0 +1,2 @@
+class TypeMergeError(RuntimeError):
+    pass

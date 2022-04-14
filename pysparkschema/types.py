@@ -1,14 +1,21 @@
 from pyspark.sql.types import StructType, StructField, ArrayType
+from .resolver import (
+    TypeResolver,
+    NullTypeResolveStrategy,
+    NumberTypeResolveStrategy,
+)
+from .error import TypeMergeError
 
 
-class TypeMergeError(RuntimeError):
-    pass
+default_resolver = TypeResolver(
+    [
+        NullTypeResolveStrategy,
+        NumberTypeResolveStrategy,
+    ]
+)
 
-def is_null(t):
-    return t.typeName() in ["null", "void"]
 
-
-def merge_array_schemas(a1, a2):
+def merge_array_schemas(a1, a2, resolver: TypeResolver = default_resolver):
     a1_elem_typename = a1.elementType.typeName()
     a2_elem_typename = a2.elementType.typeName()
 
@@ -19,19 +26,17 @@ def merge_array_schemas(a1, a2):
             return ArrayType(merge_array_schemas(a1.elementType, a2.elementType))
         else:
             return ArrayType(a1.elementType)
-    elif is_null(a1.elementType) and not is_null(a2.elementType):
-        return ArrayType(a2.elementType)
-    elif not is_null(a1.elementType) and is_null(a2.elementType):
-        return ArrayType(a1.elementType)
-
-    raise TypeMergeError(f"Schema {a1.elementType} and {a2.elementType} cannot be merged")
+    else:
+        new_type = resolver.resolve(a1.elementType, a2.elementType)
+        return ArrayType(new_type)
 
 
-def merge_schemas(s1, s2):
+def merge_schemas(s1, s2, resolver: TypeResolver = default_resolver):
     """
     Merge DataFrame schemas
 
     - merged schema will be nullable
+    - For backward compatibility the schema of s1 has priority
     """
 
     s1_key_list = [f.name for f in s1]
@@ -47,22 +52,23 @@ def merge_schemas(s1, s2):
         s2_type = s2[key].dataType.typeName()
         if s1_type == s2_type:
             if s1_type == "struct":
-                new_fields[key] = merge_schemas(s1[key].dataType, s2[key].dataType)
+                new_fields[key] = merge_schemas(
+                    s1[key].dataType, s2[key].dataType, resolver
+                )
             elif s1_type == "array":
                 try:
                     new_fields[key] = merge_array_schemas(
-                        s1[key].dataType, s2[key].dataType
+                        s1[key].dataType, s2[key].dataType, resolver
                     )
                 except TypeMergeError as e:
                     errors.append(str(e))
             else:
                 new_fields[key] = s1[key].dataType
-        elif is_null(s1[key].dataType) and not is_null(s2[key].dataType):
-            new_fields[key] = s2[key].dataType
-        elif not is_null(s1[key].dataType) and is_null(s2[key].dataType):
-            new_fields[key] = s1[key].dataType
         else:
-            errors.append(f"Failed to merge schema {s1_type} != {s2_type}")
+            try:
+                new_fields[key] = resolver.resolve(s1[key].dataType, s2[key].dataType)
+            except TypeMergeError as e:
+                errors.append(str(e))
 
     for key in s1_keys - s2_keys:
         new_fields[key] = s1[key].dataType
@@ -72,4 +78,3 @@ def merge_schemas(s1, s2):
     if errors:
         raise TypeMergeError("\n".join(errors))
     return StructType([StructField(key, new_fields[key], True) for key in final_order])
-

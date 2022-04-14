@@ -2,11 +2,10 @@ from pyspark.sql.types import (
     StructType,
     StructField,
     StringType,
-    IntegerType,
     NullType,
     ArrayType,
 )
-from pytest import fixture, raises
+from pytest import raises
 from pysparkschema.types import merge_schemas, TypeMergeError
 
 
@@ -167,5 +166,3 @@ def test_error_merge_schemas():
     )
     with raises(TypeMergeError):
         merge_schemas(schema, schema2)
-
-
