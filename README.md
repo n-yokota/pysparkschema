@@ -45,7 +45,7 @@ schema2 = StructType([
         ]), True)
     ),
 ])
- 
+
 
 df1 = spark.createDataFrame(data=data,schema=schema1)
 print("schema1")
@@ -91,4 +91,21 @@ root
  |    |    |-- test1: string (nullable = true)
  |    |    |-- test2: string (nullable = true)
  |-- test4: null (nullable = true)
+```
+
+## Custom Resolver
+
+You can use custom Resolver if you want to resolve some own pyspark type conflict cases.
+
+```python
+from pysparkschema.resolver import TypeResolveStrategy, TypeResolver
+from pysparkschema.types import merge_schemas
+
+class ForceFirstResolveStrategy(TypeResolveStrategy):
+    @staticmethod
+    def resolve(type1, type2):
+        return type1
+
+resolver = TypeResolver([ForceFirstResolveStrategy])
+new_schema = merge_schemas(schema1, schema2, resolver)
 ```
