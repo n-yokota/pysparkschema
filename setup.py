@@ -35,6 +35,6 @@ setup(
     test_suite="tests",
     extras_require={"test": test_requirements},
     url="https://github.com/n-yokota/pysparkschema",
-    version="0.1.0",
+    version="0.2.0",
     zip_safe=False,
 )

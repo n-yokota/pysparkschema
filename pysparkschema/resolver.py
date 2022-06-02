@@ -48,6 +48,9 @@ def is_struct(t):
     return t.typeName() == "struct"
 
 
+def is_same_type(t1, t2):
+    return t1.typeName() == t2.typeName()
+
 class NullTypeResolveStrategy(TypeResolveStrategy):
     @staticmethod
     def resolve(type1, type2):
