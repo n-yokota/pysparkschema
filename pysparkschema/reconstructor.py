@@ -32,7 +32,7 @@ def reconstruct(col, old_data_type, new_data_type):
                 ),
             )
         else:
-            return col
+            return col.cast(new_data_type)
     else:
         if is_struct(new_data_type):
             raise ReconstructError("Not struct type cannot convert to struct type")
