@@ -32,13 +32,15 @@ def merge_array_schemas(a1, a2, resolver: TypeResolver = default_resolver):
         return ArrayType(resolver.resolve(e_type1, e_type2))
 
 
-def merge_schemas(s1, s2, resolver: TypeResolver = default_resolver):
+def merge_schemas(s1, s2, resolver: TypeResolver = None):
     """
     Merge DataFrame schemas
 
     - merged schema will be nullable
     - For backward compatibility the schema of s1 has priority
     """
+    if resolver is None:
+        resolver = default_resolver
 
     s1_key_list = [f.name for f in s1]
     s2_key_list = [f.name for f in s2]

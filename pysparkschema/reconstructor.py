@@ -1,6 +1,24 @@
 from .error import ReconstructError
 from .resolver import is_struct, is_array, is_same_type
+from .types import merge_schemas
 import pyspark.sql.functions as F
+
+
+def reconstruct_to_new_schema(df, schema_to_be, resolver=None):
+    fields = [f.name for f in df.schema]
+    new_fields = [f.name for f in schema_to_be]
+    current_schema = df.schema
+    new_schema = merge_schemas(df.schema, schema_to_be, resolver)
+    for col_name in new_fields:
+        current_data_type = current_schema[col_name].dataType
+        new_data_type = new_schema[col_name].dataType
+        if col_name not in fields:
+            df = df.withColumn(col_name, F.lit(None).cast(new_data_type))
+        else:
+            new_column = reconstruct(F.col(col_name), current_data_type, new_data_type)
+            df = df.withColumn(col_name, new_column)
+
+    return df
 
 
 def reconstruct(col, old_data_type, new_data_type):

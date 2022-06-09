@@ -18,6 +18,7 @@ pytest
 ```python
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, NullType, ArrayType
+from pysparkschema.types import merge_schemas
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -108,4 +109,42 @@ class ForceFirstResolveStrategy(TypeResolveStrategy):
 
 resolver = TypeResolver([ForceFirstResolveStrategy])
 new_schema = merge_schemas(schema1, schema2, resolver)
+```
+
+## Using Re-constructor
+
+```python
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, NullType, ArrayType
+from pyspark.sql import functions as F
+from pysparkschema.reconstructor import reconstruct_to_new_schema
+
+spark = SparkSession.builder.getOrCreate()
+data = [(None, None, None, None)]
+
+schema1 = StructType([
+    StructField("test1",StringType(),True),
+    StructField("test2",NullType(),True),
+    StructField("array1", ArrayType(
+        StructType([
+            StructField("test1",StringType(),True),
+            StructField("test2",NullType(),True),
+        ]), True)
+    ),
+])
+schema2 = StructType([
+    StructField("test1",StringType(),True),
+    StructField("test2",StringType(),True),
+    StructField("test3",StringType(),True),
+    StructField("array1", ArrayType(
+        StructType([
+            StructField("test1",StringType(),True),
+            StructField("test2",StringType(),True),
+            StructField("test3",StringType(),True),
+        ]), True)
+    ),
+])
+
+df = spark.createDataFrame(data=data, schema=schema1)
+new_df = reconstruct_to_new_schema(df, schema2)
 ```
