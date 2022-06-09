@@ -1,3 +1,7 @@
+### 0.4.0 2022/06/09 add mask
+
+Add mask function to mask some field include nested fields
+
 ### 0.3.0 2022/06/09 add re-constructor2
 
 Add re-constructor function (reconstruct_to_new_schema) to reshape struct fields to match the new schema

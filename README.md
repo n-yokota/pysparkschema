@@ -148,3 +148,74 @@ schema2 = StructType([
 df = spark.createDataFrame(data=data, schema=schema1)
 new_df = reconstruct_to_new_schema(df, schema2)
 ```
+
+## Using mask
+
+```python
+json1 = '''
+{
+    "a": 1,
+    "b": "test",
+    "c": {
+        "f": 1.0,
+        "g": "test2"
+    },
+    "d": [1,2,3],
+    "e": [
+        {
+            "h": 10000,
+            "i": "test3"
+        },
+        {
+            "h": 2000,
+            "j": null,
+            "k": "1.2"
+        }
+    ]
+}
+'''
+json2 = '''
+{
+    "a": null,
+    "b": null,
+    "c": null,
+    "d": ["4.0"],
+    "e": []
+}
+'''
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.getOrCreate()
+df = spark.read.json(spark.sparkContext.parallelize([json1, json2]))
+
+def converter(val):
+    return val + '_converted'
+
+df.printSchema()
+print(df.toPandas().to_csv(sep='\t', index=False)))
+print(mask(df, ["b", "e.elem.i"], converter).toPandas().to_csv(sep='\t', index=False)))
+```
+
+```
+root
+ |-- a: long (nullable = true)
+ |-- b: string (nullable = true)
+ |-- c: struct (nullable = true)
+ |    |-- f: double (nullable = true)
+ |    |-- g: string (nullable = true)
+ |-- d: array (nullable = true)
+ |    |-- element: string (containsNull = true)
+ |-- e: array (nullable = true)
+ |    |-- element: struct (containsNull = true)
+ |    |    |-- h: long (nullable = true)
+ |    |    |-- i: string (nullable = true)
+ |    |    |-- j: string (nullable = true)
+ |    |    |-- k: string (nullable = true)
+a	b	c	d	e
+1.0	test	Row(f=1.0, g='test2')	['1', '2', '3']	[Row(h=10000, i='test3', j=None, k=None), Row(h=2000, i=None, j=None, k='1.2')]
+			['4.0']	[]
+
+a	b	c	d	e
+1.0	test_converted	Row(f=1.0, g='test2')	['1', '2', '3']	[Row(h=10000, i='test3_converted', j=None, k=None), Row(h=2000, i=None, j=None, k='1.2')]
+			['4.0']	[]
+```
